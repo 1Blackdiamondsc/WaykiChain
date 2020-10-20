@@ -278,6 +278,60 @@ Value signmessage(const Array& params, bool fHelp) {
     return EncodeBase64(&vchSig[0], vchSig.size());
 }
 
+
+Value signhash(const Array& params, bool fHelp) {
+    if (fHelp || params.size() != 2) {
+        throw runtime_error("signhash \"signee\" \"message\"\n"
+            "\nSign a message by the private key of the given address"
+            + HelpRequiringPassphrase() + "\n"
+            "\nArguments:\n"
+            "1. \"signee\"          (string, required) The coin address or private key to sign.\n"
+            "2. \"hash\"            (string, required) The hash to create a signature of.\n"
+            "\nResult:\n"
+            "\"signature\"          (string) The signature of the hash encoded hex\n"
+            "\nExamples:\n"
+            + HelpExampleCli("walletpassphrase", "\"mypassphrase\" 30") +
+            "\nCreate the signature\n"
+            + HelpExampleCli("signhash", R"("wYXV7QzHZnb8LuWw7Xa24dfUTqmH2tNZBq" "0375742ca2ac10c58837380773d73d117918568e97044c3c2a25655bd26ed88c")") +
+            "\nAs json rpc\n"
+            + HelpExampleRpc("signhash", R"("wYXV7QzHZnb8LuWw7Xa24dfUTqmH2tNZBq", "0375742ca2ac10c58837380773d73d117918568e97044c3c2a25655bd26ed88c")")
+        );
+    }
+
+    EnsureWalletIsUnlocked();
+
+    auto signee = params[0].get_str();
+    auto pUserId = CUserID::ParseUserId(signee);
+
+    CKey key;
+    if (pUserId && !pUserId->IsEmpty()) {
+        auto keyid = RPC_PARAM::GetUserKeyId(*pUserId);
+        if (!pWalletMain->GetKey(keyid, key, false)) {
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, strprintf("Private key of signee=%s does not exist in wallet", signee));
+        }
+    } else {
+        CCoinSecret secret;
+        if (!secret.SetString(signee))
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid adress or private key");
+
+        key = secret.GetKey();
+        if (!key.IsValid())
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Private key outside allowed range.");
+    }
+
+    uint256 hash  = RPC_PARAM::GetTxid(params[1], "hash");
+
+    vector<uint8_t> signature;
+
+    if (!key.Sign(hash, signature)) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, strprintf("sign error of signee=%s", signee));
+    }
+
+    Object obj;
+    obj.push_back(Pair("signature", HexStr(signature)));
+    return obj;
+}
+
 Value submitsendtx(const Array& params, bool fHelp) {
     if (fHelp || (params.size() < 3 && params.size() > 5))
         throw runtime_error(

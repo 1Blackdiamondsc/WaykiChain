@@ -121,6 +121,8 @@ extern Value getminerbyblocktime(const Array& params, bool fHelp);
 extern Value getnewaddr(const Array& params, bool fHelp); // in rpcwallet.cpp
 extern Value getaccount(const Array& params, bool fHelp);
 extern Value verifymessage(const Array& params, bool fHelp);
+extern Value signhash(const Array& params, bool fHelp);
+extern Value verifysignhash(const Array& params, bool fHelp);
 extern Value getcoinunitinfo(const Array& params, bool fHelp);
 extern Value addmulsigaddr(const Array& params, bool fHelp);
 extern Value createmulsig(const Array& params, bool fHelp);

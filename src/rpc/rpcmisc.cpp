@@ -180,7 +180,7 @@ Value getfinblockcount (const Array& params, bool fHelp) {
             "getfinblockcount\n"
             "\nReturn the height of the finality block.\n"
             "\nResult:\n"
-          
+
             "\n  (numeric) The height of the finality block\n"
 
             "\nExamples:\n" +
@@ -232,6 +232,48 @@ Value verifymessage(const Array& params, bool fHelp) {
         return false;
 
     return (pubkey.GetKeyId() == keyId);
+}
+
+Value verifysignhash(const Array& params, bool fHelp) {
+    if (fHelp || params.size() != 3)
+        throw runtime_error(
+            "verifysignhash \"address\" \"signature\" \"message\"\n"
+            "\nVerify a signed message\n"
+            "\nArguments:\n"
+            "1. \"address\"         (string, required) The address to use for the signature.\n"
+            "2. \"signature\"       (string, required) The signature provided by the signer in base 64 encoding (see signmessage).\n"
+            "3. \"hash\"            (string, required) The hash that was signed.\n"
+            "\nResult:\n"
+            "true|false             (boolean) If the signature is verified or not.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("verifysignhash", "\"0-2\" \"3044022018ad2e19ba89bf83add94539376a9d42ac23558c3184a10f9dcac763b40d09d302207a159fff3984159671e1630b98c5960c31d8bf298dab554f58581c6de9ef345b\" \"0375742ca2ac10c58837380773d73d117918568e97044c3c2a25655bd26ed88c\"") +
+            "\nAs json rpc\n"
+            + HelpExampleRpc("verifytext", "\"0-2\", \"3044022018ad2e19ba89bf83add94539376a9d42ac23558c3184a10f9dcac763b40d09d302207a159fff3984159671e1630b98c5960c31d8bf298dab554f58581c6de9ef345b\", \"0375742ca2ac10c58837380773d73d117918568e97044c3c2a25655bd26ed88c\"")
+        );
+
+
+    const auto &uid = RPC_PARAM::GetUserId(params[0]);
+    string signStr     = RPC_PARAM::GetBinStrFromHex(params[1], "signature");
+    uint256 hash  = RPC_PARAM::GetTxid(params[2], "hash");
+
+    if (signStr.empty()) {
+        throw JSONRPCError(RPC_INVALID_PARAMS, "signature is empty");
+    }
+
+    std::vector<uint8_t> signature(signStr.begin(), signStr.end());
+
+    CPubKey pubkey;
+    if (uid.is<CPubKey>()) {
+        pubkey = uid.get<CPubKey>();
+    } else {
+        CAccount account = RPC_PARAM::GetUserAccount(*pCdMan->pAccountCache, uid);
+    }
+
+    bool success = VerifySignature(hash, signature, pubkey);
+
+    Object obj;
+    obj.push_back(Pair("success", success));
+    return obj;
 }
 
 //                 prefix type             db          cache
